@@ -123,8 +123,6 @@ def main(args: DictConfig):
     # ------------------
     
     model = EVFlowNet(args.train).to(device)
-    #input_ = torch.rand(8, 4, 256, 256) 
-    pred_flows = model(input_)
     # ------------------
     #   optimizer
     # ------------------
