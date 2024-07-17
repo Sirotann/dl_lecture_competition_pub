@@ -30,7 +30,7 @@ class VoxelGrid(EventRepresentation):
     def __init__(self, input_size: tuple, normalize: bool):
         assert len(input_size) == 3
         self.voxel_grid = torch.zeros(
-            (input_size), dtype=torch.cuda.float, requires_grad=False)
+            (input_size), dtype=torch.float, requires_grad=False)
         self.nb_channels = input_size[0]
         self.normalize = normalize
 
