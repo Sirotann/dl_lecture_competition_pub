@@ -142,12 +142,11 @@ def main(args: DictConfig):
         for i, batch in enumerate(tqdm(train_data)):
             batch: Dict[str, Any]
             event_image = batch["event_volume"].to(device,non_blocking=True) 
-            ground_truth_flow = {
-            'flow0': batch["flow_gt_0"].to(device,non_blocking=True),
-            'flow1': batch["flow_gt_1"].to(device,non_blocking=True),
-            'flow2': batch["flow_gt_2"].to(device,non_blocking=True),
-            'flow3': batch["flow_gt_3"].to(device,non_blocking=True)
-            } 
+            loss_0: torch.Tensor = compute_loss(pred_flows['flow0'], ground_truth_flow_0)
+            loss_1: torch.Tensor = compute_loss(pred_flows['flow1'], ground_truth_flow_1)
+            loss_2: torch.Tensor = compute_loss(pred_flows['flow2'], ground_truth_flow_2)
+            loss_3: torch.Tensor = compute_loss(pred_flows['flow3'], ground_truth_flow_3)
+            loss = loss_0 + loss_1 + loss_2 + loss_3
         
             optimizer.zero_grad()
             with torch.cuda.amp.autocast():
