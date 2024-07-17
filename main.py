@@ -141,17 +141,19 @@ def main(args: DictConfig):
         print("on epoch: {}".format(epoch+1))
         for i, batch in enumerate(tqdm(train_data)):
             batch: Dict[str, Any]
-            event_image = batch["event_volume"].to(device,non_blocking=True) 
-            loss_0: torch.Tensor = compute_loss(pred_flows['flow0'], ground_truth_flow_0)
+            event_image = batch["event_volume"].to(device, non_blocking=True)  
+            ground_truth_flow_0 = batch["flow_gt_0"].to(device, non_blocking=True)
+            ground_truth_flow_1 = batch["flow_gt_1"].to(device, non_blocking=True)
+            ground_truth_flow_2 = batch["flow_gt_2"].to(device, non_blocking=True)
+            ground_truth_flow_3 = batch["flow_gt_3"].to(device, non_blocking=True)
+            optimizer.zero_grad()
+            with torch.cuda.amp.autocast():
+                pred_flows = model(event_image)
+                loss_0: torch.Tensor = compute_loss(pred_flows['flow0'], ground_truth_flow_0)
             loss_1: torch.Tensor = compute_loss(pred_flows['flow1'], ground_truth_flow_1)
             loss_2: torch.Tensor = compute_loss(pred_flows['flow2'], ground_truth_flow_2)
             loss_3: torch.Tensor = compute_loss(pred_flows['flow3'], ground_truth_flow_3)
             loss = loss_0 + loss_1 + loss_2 + loss_3
-        
-            optimizer.zero_grad()
-            with torch.cuda.amp.autocast():
-                pred_flows = model(event_image)
-                loss: torch.Tensor = compute_loss(pred_flows, ground_truth_flow)
             scaler.scale(loss).backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             scaler.scale(loss).backward()
