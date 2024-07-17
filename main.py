@@ -121,6 +121,7 @@ def main(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = EVFlowNet(args.train).to(device)
     input_ = torch.rand(8, 4, 256, 256) 
     pred_flows = model(input_)
@@ -140,12 +141,12 @@ def main(args: DictConfig):
         print("on epoch: {}".format(epoch+1))
         for i, batch in enumerate(tqdm(train_data)):
             batch: Dict[str, Any]
-            event_image = batch["event_volume"].to(device) 
+            event_image = batch["event_volume"].to(device,non_blocking=True) 
             ground_truth_flow = {
-            'flow0': batch["flow_gt_0"].to(device),
-            'flow1': batch["flow_gt_1"].to(device),
-            'flow2': batch["flow_gt_2"].to(device),
-            'flow3': batch["flow_gt_3"].to(device)
+            'flow0': batch["flow_gt_0"].to(device,non_blocking=True),
+            'flow1': batch["flow_gt_1"].to(device,non_blocking=True),
+            'flow2': batch["flow_gt_2"].to(device,non_blocking=True),
+            'flow3': batch["flow_gt_3"].to(device,non_blocking=True)
             } 
         
             optimizer.zero_grad()
