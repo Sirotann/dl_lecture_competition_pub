@@ -127,7 +127,7 @@ def main(args: DictConfig):
     #   optimizer
     # ------------------
     optimizer = torch.optim.Adam(model.parameters(), lr=args.train.initial_learning_rate, weight_decay=args.train.weight_decay)
-    scheduler = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
+    scheduler = StepLR(optimizer, step_size=args.train.step_size, gamma=args.train.gamma)
     scaler = torch.cuda.amp.GradScaler()
 
     # ------------------
