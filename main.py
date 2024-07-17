@@ -3,6 +3,7 @@ from torch import nn
 import hydra
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import StepLR
 import random
 import numpy as np
 from src.models.evflownet import EVFlowNet
