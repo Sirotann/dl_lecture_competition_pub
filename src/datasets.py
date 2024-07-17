@@ -401,7 +401,7 @@ class Sequence(Dataset):
         ts_end_bin[-1] = ts_end
 
         event_count = torch.zeros(
-            (num_bins, self.height, self.width), dtype=torch.float, requires_grad=False)
+            (num_bins, self.height, self.width), dtype=torch.cuda.float, requires_grad=False)
 
         for i in range(num_bins):
             event_data = self.event_slicer.get_events(
