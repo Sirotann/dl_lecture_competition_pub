@@ -72,7 +72,7 @@ class EVFlowNet(nn.Module):
 #     '''
 #     args = configs()
 #     model = EVFlowNet(args).cuda()
-#     input_ = torch.rand(8,8,256,256).cuda()
+#     input_ = torch.rand(8,4,256,256).cuda()
 #     a = time.time()
 #     output = model(input_)
 #     b = time.time()
