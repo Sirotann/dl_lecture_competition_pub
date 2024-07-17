@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 import hydra
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
@@ -43,6 +44,15 @@ def save_optical_flow_to_npy(flow: torch.Tensor, file_name: str):
     file_name: str => ファイル名
     '''
     np.save(f"{file_name}.npy", flow.cpu().numpy())
+
+def compute_loss(pred_flows: Dict[str, torch.Tensor], true_flows: Dict[str, torch.Tensor]) -> torch.Tensor:
+    """
+    Computes the loss by summing the losses at different scales.
+    """
+    loss = 0.0
+    for key in pred_flows.keys():
+        loss += nn.functional.mse_loss(pred_flows[key], true_flows[key])
+    return loss 
 
 @hydra.main(version_base=None, config_path="configs", config_name="base")
 def main(args: DictConfig):
@@ -110,12 +120,17 @@ def main(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = EVFlowNet(args.train).to(device)
-
+    input_ = torch.rand(8, 8, 256, 256) 
+    pred_flows = model(input_)
     # ------------------
     #   optimizer
     # ------------------
     optimizer = torch.optim.Adam(model.parameters(), lr=args.train.initial_learning_rate, weight_decay=args.train.weight_decay)
+    scheduler = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
+
+
     # ------------------
     #   Start training
     # ------------------
@@ -125,17 +140,25 @@ def main(args: DictConfig):
         print("on epoch: {}".format(epoch+1))
         for i, batch in enumerate(tqdm(train_data)):
             batch: Dict[str, Any]
-            event_image = batch["event_volume"].to(device) # [B, 4, 480, 640]
-            ground_truth_flow = batch["flow_gt"].to(device) # [B, 2, 480, 640]
-            flow = model(event_image) # [B, 2, 480, 640]
-            loss: torch.Tensor = compute_epe_error(flow, ground_truth_flow)
-            print(f"batch {i} loss: {loss.item()}")
+            event_image = batch["event_volume"].to(device) 
+            ground_truth_flow = {
+            'flow0': batch["flow_gt_0"].to(device),
+            'flow1': batch["flow_gt_1"].to(device),
+            'flow2': batch["flow_gt_2"].to(device),
+            'flow3': batch["flow_gt_3"].to(device)
+            } 
+            pred_flows = model(event_image) 
+            loss: torch.Tensor = compute_loss(pred_flows, ground_truth_flow)
+        
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
-
+            
+            print(f"batch {i} loss: {loss.item()}")
             total_loss += loss.item()
-        print(f'Epoch {epoch+1}, Loss: {total_loss / len(train_data)}')
+        scheduler.step()
+        print(f'Epoch {epoch + 1}, Loss: {total_loss / len(train_data)}, Learning Rate: {scheduler.get_last_lr()}')
 
     # Create the directory if it doesn't exist
     if not os.path.exists('checkpoints'):
