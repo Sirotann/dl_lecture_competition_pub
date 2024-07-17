@@ -121,7 +121,7 @@ def main(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
     model = EVFlowNet(args.train).to(device)
     input_ = torch.rand(8, 4, 256, 256) 
     pred_flows = model(input_)
