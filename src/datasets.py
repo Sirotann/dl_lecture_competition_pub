@@ -210,12 +210,7 @@ class Sequence(Dataset):
         self.visualize_samples = visualize
         self.load_gt = load_gt
         self.transforms = transforms
-        self.data_augmentation = tf.Compose([
-            tf.RandomHorizontalFlip(),
-            tf.RandomVerticalFlip(),
-            tf.RandomRotation(10),
-            tf.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2)
-        ])
+        
         if self.mode == "test":
             assert load_gt == False
             # Get Test Timestamp File
@@ -352,7 +347,6 @@ class Sequence(Dataset):
         else:
             event_representation = self.events_to_voxel_grid(
                 p, t, x_rect, y_rect)
-            event_representation = self.data_augmentation(event_representation)
             output['event_volume'] = event_representation
         output['name_map'] = self.name_idx
         
