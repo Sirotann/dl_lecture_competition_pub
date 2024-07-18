@@ -1,5 +1,4 @@
 import torch
-from torch import nn
 import hydra
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
@@ -45,15 +44,6 @@ def save_optical_flow_to_npy(flow: torch.Tensor, file_name: str):
     file_name: str => ファイル名
     '''
     np.save(f"{file_name}.npy", flow.cpu().numpy())
-
-def compute_loss(pred_flows: Dict[str, torch.Tensor], true_flows: Dict[str, torch.Tensor]) -> torch.Tensor:
-    """
-    Computes the loss by summing the losses at different scales.
-    """
-    loss = 0.0
-    for key in pred_flows.keys():
-        loss += nn.functional.mse_loss(pred_flows[key], true_flows[key])
-    return loss 
 
 @hydra.main(version_base=None, config_path="configs", config_name="base")
 def main(args: DictConfig):
@@ -121,14 +111,13 @@ def main(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
-    
     model = EVFlowNet(args.train).to(device)
+
     # ------------------
     #   optimizer
     # ------------------
     optimizer = torch.optim.Adam(model.parameters(), lr=args.train.initial_learning_rate, weight_decay=args.train.weight_decay)
     scheduler = StepLR(optimizer, step_size=args.train.step_size, gamma=args.train.gamma)
-    scaler = torch.cuda.amp.GradScaler()
 
     # ------------------
     #   Start training
@@ -141,21 +130,17 @@ def main(args: DictConfig):
             batch: Dict[str, Any]
             event_image = batch["event_volume"].to(device) # [B, 4, 480, 640]
             ground_truth_flow = batch["flow_gt"].to(device) # [B, 2, 480, 640]
-
-            optimizer.zero_grad()
-            with torch.cuda.amp.autocast():
-                flow = model(event_image)
-                loss: torch.Tensor = compute_epe_error(flow, ground_truth_flow)
-            scaler.scale(loss).backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
             
+            flow = model(event_image)
+            loss: torch.Tensor = compute_epe_error(flow, ground_truth_flow)
             print(f"batch {i} loss: {loss.item()}")
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
+
             total_loss += loss.item()
         scheduler.step()
-        print(f'Epoch {epoch + 1}, Loss: {total_loss / len(train_data)}, Learning Rate: {scheduler.get_last_lr()}')
+        print(f'Epoch {epoch+1}, Loss: {total_loss / len(train_data)}, Learning Rate: {scheduler.get_last_lr()}')
 
     # Create the directory if it doesn't exist
     if not os.path.exists('checkpoints'):
